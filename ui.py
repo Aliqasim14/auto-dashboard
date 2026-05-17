@@ -4,11 +4,6 @@ ui.py
 Dash UI with drag-and-drop file upload.
 Accepts any CSV / Excel / TSV file and auto-builds a dashboard.
 All analysis logic lives in analysis.py.
-
-Run:
-    pip install dash plotly pandas openpyxl xlrd
-    python ui.py
-Then open  http://127.0.0.1:8050
 """
 
 import json
@@ -24,13 +19,11 @@ from analysis import (
     apply_filters,
 )
 
-# Appp
-app  = dash.Dash(__name__, title="Auto Dashboard", suppress_callback_exceptions=True)
+# ── App ───────────────────────────────────────────────────────────────────────
+app = dash.Dash(__name__, title="Auto Dashboard", suppress_callback_exceptions=True)
 server = app.server
 
-
-# 
-# Style helpers 
+# ── Style helpers ─────────────────────────────────────────────────────────────
 BG    = "#f5f7fb"
 WHITE = "#ffffff"
 
@@ -65,9 +58,7 @@ def kpi_card_el(label, value, sub):
     })
 
 
-# 
-# Upload zone 
-
+# ── Upload zone ───────────────────────────────────────────────────────────────
 upload_zone = html.Div([
     dcc.Upload(
         id="upload",
@@ -100,14 +91,11 @@ upload_zone = html.Div([
 ], style={"maxWidth": "560px", "margin": "60px auto 0"})
 
 
-# 
-# Root layout 
-
+# ── Root layout ───────────────────────────────────────────────────────────────
 app.layout = html.Div(
     style={"fontFamily": "Segoe UI, sans-serif", "background": BG,
            "minHeight": "100vh", "padding": "28px 32px"},
     children=[
-        # Hidden store — holds serialised DataFrame as JSON + column profile
         dcc.Store(id="store-data"),
         dcc.Store(id="store-profile"),
 
@@ -121,13 +109,10 @@ app.layout = html.Div(
                    style={"margin": "4px 0 0", "color": "#888", "fontSize": "13px"}),
         ], style={"marginBottom": "28px"}),
 
-        # Upload area (shown until file loaded)
         html.Div(id="upload-area", children=upload_zone),
 
-        # Dashboard (hidden until file loaded)
         html.Div(id="dashboard", style={"display": "none"}, children=[
 
-            # File info bar + reset button
             html.Div([
                 html.Div(id="file-info", style={"fontSize": "13px", "color": "#555"}),
                 html.Button("↩ Upload new file", id="btn-reset",
@@ -137,30 +122,25 @@ app.layout = html.Div(
                                 "border": "1px solid #c0cfe8", "borderRadius": "8px",
                                 "background": WHITE, "cursor": "pointer", "color": "#378ADD",
                             }),
-            ], style={"display": "flex", "alignItems": "center",
-                      "marginBottom": "20px"}),
+            ], style={"display": "flex", "alignItems": "center", "marginBottom": "20px"}),
 
-            # Dynamic filters row
             html.Div(id="filters-row", style={
                 "display": "flex", "gap": "14px", "flexWrap": "wrap",
                 "marginBottom": "22px", "alignItems": "flex-end",
             }),
 
-            # KPI row
             html.Div(id="kpi-row", style={
                 "display": "flex", "gap": "14px", "flexWrap": "wrap",
                 "marginBottom": "22px",
             }),
 
-            # Charts grid
             html.Div(id="charts-grid"),
         ]),
     ],
 )
 
 
-# 
-# Callback 1: Parse upload → store data 
+# ── Callback 1: Parse upload → store data ─────────────────────────────────────
 @app.callback(
     Output("store-data",    "data"),
     Output("store-profile", "data"),
@@ -172,12 +152,10 @@ app.layout = html.Div(
 def store_upload(contents, filename):
     if contents is None:
         return dash.no_update, dash.no_update, ""
-
     try:
         df      = parse_upload(contents, filename)
         profile = profile_columns(df)
 
-        # Serialise datetime columns as strings so JSON can handle them
         df_json = df.copy()
         for col in profile["datetime"]:
             df_json[col] = df_json[col].astype(str)
@@ -185,16 +163,19 @@ def store_upload(contents, filename):
         return (
             df_json.to_json(date_format="iso", orient="split"),
             json.dumps(profile),
-            html.Span(f"✅ '{filename}' loaded — {len(df):,} rows × {len(df.columns)} columns",
-                      style={"color": "#1D9E75", "fontWeight": "600"}),
+            html.Span(
+                f"✅ '{filename}' loaded — {len(df):,} rows × {len(df.columns)} columns",
+                style={"color": "#1D9E75", "fontWeight": "600"},
+            ),
         )
-    except ValueError as e:
+    except Exception as e:
         return (
             None, None,
             html.Span(f"❌ {e}", style={"color": "#D85A30"}),
         )
 
-# Callback 2: Show/hide panels after upload
+
+# ── Callback 2: Show/hide panels ──────────────────────────────────────────────
 @app.callback(
     Output("upload-area", "style"),
     Output("dashboard",   "style"),
@@ -207,11 +188,10 @@ def toggle_panels(data, _reset):
     return {"display": "none"}, {"display": "block"}
 
 
-# 
-# Callback 3: Build filters + static file-info
+# ── Callback 3: Build filters ─────────────────────────────────────────────────
 @app.callback(
-    Output("file-info",    "children"),
-    Output("filters-row",  "children"),
+    Output("file-info",   "children"),
+    Output("filters-row", "children"),
     Input("store-data",    "data"),
     Input("store-profile", "data"),
     prevent_initial_call=True,
@@ -232,16 +212,17 @@ def build_filters(data_json, profile_json):
         f"{len(profile['datetime'])} date",
     ])
 
-    # Build one dropdown per categorical column (up to 4)
     filters = []
     for col in profile["categoric"][:4]:
         unique_vals = sorted(df[col].dropna().astype(str).unique())
         opts = [{"label": "All", "value": "All"}] + \
                [{"label": v, "value": v} for v in unique_vals]
         filters.append(html.Div([
-            html.Label(col, style={"fontSize": "11px", "color": "#888",
-                                   "display": "block", "marginBottom": "4px",
-                                   "fontWeight": "600", "textTransform": "uppercase"}),
+            html.Label(col, style={
+                "fontSize": "11px", "color": "#888",
+                "display": "block", "marginBottom": "4px",
+                "fontWeight": "600", "textTransform": "uppercase",
+            }),
             dcc.Dropdown(
                 id={"type": "filter-dd", "col": col},
                 options=opts, value="All", clearable=False,
@@ -251,17 +232,20 @@ def build_filters(data_json, profile_json):
 
     return info, filters
 
-# Callback 4: Build KPIs + charts (re-runs on any filter change)
+
+# ── Callback 4: Build KPIs + charts ──────────────────────────────────────────
+# FIX: Removed prevent_initial_call so it fires correctly after store updates.
+# Also added store-data and store-profile as the primary triggers.
 @app.callback(
-    Output("kpi-row",    "children"),
-    Output("charts-grid","children"),
+    Output("kpi-row",     "children"),
+    Output("charts-grid", "children"),
     Input("store-data",    "data"),
     Input("store-profile", "data"),
     Input({"type": "filter-dd", "col": ALL}, "value"),
     State({"type": "filter-dd", "col": ALL}, "id"),
-    prevent_initial_call=True,
 )
 def build_dashboard(data_json, profile_json, filter_values, filter_ids):
+    # Do nothing if no data is loaded yet
     if not data_json or not profile_json:
         return [], []
 
@@ -269,31 +253,27 @@ def build_dashboard(data_json, profile_json, filter_values, filter_ids):
     df      = pd.read_json(data_json, orient="split")
     profile = json.loads(profile_json)
 
-    # Re-parse datetimes (lost in JSON round-trip)
+    # Re-parse datetimes lost in JSON round-trip
     for col in profile["datetime"]:
         if col in df.columns:
             df[col] = pd.to_datetime(df[col], errors="coerce")
 
-    # Apply filters
-    fv = {fid["col"]: val for fid, val in zip(filter_ids, filter_values)}
-    df = apply_filters(df, fv)
+    # Apply filters safely
+    if filter_ids and filter_values:
+        fv = {fid["col"]: val for fid, val in zip(filter_ids, filter_values)}
+        df = apply_filters(df, fv)
 
-    # KPIs 
-    kpis     = get_kpis(df, profile)
-    kpi_els  = [kpi_card_el(k["label"], k["value"], k["sub"]) for k in kpis]
+    # KPIs
+    kpis    = get_kpis(df, profile)
+    kpi_els = [kpi_card_el(k["label"], k["value"], k["sub"]) for k in kpis]
 
-    
-    # Charts 
-    
-    charts   = build_charts(df, profile)
-    n        = len(charts)
-
+    # Charts
+    charts    = build_charts(df, profile)
+    n         = len(charts)
     chart_els = []
     i = 0
     while i < n:
-        remaining = n - i
-        if remaining == 1:
-            # Single full-width chart
+        if (n - i) == 1:
             row = html.Div(
                 html.Div(
                     dcc.Graph(figure=charts[i][1], config={"displayModeBar": False},
@@ -303,26 +283,25 @@ def build_dashboard(data_json, profile_json, filter_values, filter_ids):
             )
             i += 1
         else:
-            # Side-by-side pair
-            left  = charts[i]
-            right = charts[i + 1]
             row = html.Div([
                 html.Div(
-                    dcc.Graph(figure=left[1], config={"displayModeBar": False},
+                    dcc.Graph(figure=charts[i][1], config={"displayModeBar": False},
                               style={"height": "320px"}),
                     style=card(),
                 ),
                 html.Div(
-                    dcc.Graph(figure=right[1], config={"displayModeBar": False},
+                    dcc.Graph(figure=charts[i+1][1], config={"displayModeBar": False},
                               style={"height": "320px"}),
                     style=card(),
                 ),
             ], style={"display": "grid", "gridTemplateColumns": "1fr 1fr",
                       "gap": "16px", "marginBottom": "16px"})
             i += 2
-
         chart_els.append(row)
 
     return kpi_els, chart_els
+
+
+# ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     app.run(debug=False)
