@@ -243,4 +243,4 @@ def apply_filter_changes(filter_values, filter_ids, data_json, profile_json):
 
 
 if __name__ == "__main__":
-    app.run(debug=False)
+    app.run(debug=False,port=8050)
