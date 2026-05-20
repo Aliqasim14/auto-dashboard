@@ -1,3 +1,4 @@
+import io
 import json
 import dash
 from dash import dcc, html, Input, Output, State, ctx, ALL
@@ -134,7 +135,7 @@ def build_dashboard(data_json, profile_json):
         return "", [], [], []
 
     import pandas as pd
-    df      = pd.read_json(data_json, orient="split")
+    df      = pd.read_json(io.StringIO(data_json), orient="split")
     profile = json.loads(profile_json)
 
     for col in profile["datetime"]:
@@ -204,7 +205,7 @@ def apply_filter_changes(filter_values, filter_ids, data_json, profile_json):
         return dash.no_update, dash.no_update
 
     import pandas as pd
-    df      = pd.read_json(data_json, orient="split")
+    df      = pd.read_json(io.StringIO(data_json), orient="split")
     profile = json.loads(profile_json)
 
     for col in profile["datetime"]:
@@ -243,4 +244,4 @@ def apply_filter_changes(filter_values, filter_ids, data_json, profile_json):
 
 
 if __name__ == "__main__":
-    app.run(debug=False,port=8050)
+    app.run(debug=False)
