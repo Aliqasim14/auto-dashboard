@@ -1,11 +1,3 @@
-"""
-analysis.py
------------
-Smart data loader and chart builder that works with ANY CSV / Excel file.
-Auto-detects numeric, categorical, and date columns — no hardcoding needed.
-Imported by ui.py — do NOT run this file directly.
-"""
-
 import io
 import base64
 import pandas as pd
